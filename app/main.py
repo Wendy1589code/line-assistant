@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.webhooks import ImageMessageContent, MessageEvent, TextMessageContent
+from linebot.v3.webhooks import FollowEvent, ImageMessageContent, MessageEvent, TextMessageContent
 
 from . import line_io, oauth, reminders, runner
 
@@ -71,6 +71,21 @@ def _enqueue(user_id: str, reply_token: str, text: str) -> None:
 
 
 FAMILY_GROUP_ID = os.environ.get("FAMILY_GROUP_ID")
+
+WELCOME_MESSAGE = """👋 嗨！我是 Bird Assistant，你的個人 LINE 小助理。
+
+我可以幫你：
+📅 行事曆 — 查詢、新增、修改、刪除行程（個人曆/家庭共用曆）
+⏰ 提醒 — 設定未來時間點主動提醒你（或全家）
+🧠 記憶 — 記住你告訴我的事情（偏好、習慣等），之後可以直接問我
+🍱 飲食記錄 — 傳食物照片，我會幫你記錄
+
+指令
+- /綁定日曆 — 授權 Google 日曆（用行事曆功能前需先做這步）
+- /reset — 重置對話
+- /usage — 查看本月推播用量
+
+直接跟我說話就行，像「明天下午三點提醒我開會」「我這週有什麼行程」都可以 😊"""
 
 
 def _check_reminders() -> None:
@@ -135,6 +150,9 @@ async def webhook(request: Request):
         raise HTTPException(status_code=403, detail="Invalid signature")
 
     for event in events:
+        if isinstance(event, FollowEvent):
+            line_io.reply_text(event.reply_token, WELCOME_MESSAGE)
+            continue
         if not isinstance(event, MessageEvent):
             continue
         if event.source.type != "user":
