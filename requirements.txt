@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+line-bot-sdk
+claude-agent-sdk
+python-dotenv
+google-auth
+google-auth-oauthlib
+google-api-python-client
+itsdangerous
+apscheduler

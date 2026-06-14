@@ -1,0 +1,8 @@
+.env
+credentials.md
+secrets/
+data/
+__pycache__/
+*.pyc
+.venv/
+.claude/
