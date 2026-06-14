@@ -1,0 +1,34 @@
+name: Deploy to VM
+
+# Auto-deploy on every push to main. Also runnable manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.VM_HOST_IP }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy
+        env:
+          VM_HOST: ${{ secrets.VM_USER_HOST }}     # e.g. root@168.119.58.156
+          VM_PATH: /opt/line-assistant
+          SSH_OPTS: "-i ~/.ssh/id_deploy -o BatchMode=yes -o ConnectTimeout=15"
+        run: |
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh

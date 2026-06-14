@@ -54,6 +54,28 @@ def reset_session(user_id: str) -> None:
         f.unlink()
 
 
+def _log_usage(user_id: str, message: object) -> None:
+    """Print token usage + prompt-cache hit stats for one turn.
+
+    The Agent SDK caches the system prompt / tools / history prefix automatically,
+    so cache_read_input_tokens being non-zero from the 2nd turn on confirms it's working.
+    """
+    usage = getattr(message, "usage", None) or {}
+    fresh = usage.get("input_tokens", 0)
+    cache_read = usage.get("cache_read_input_tokens", 0)
+    cache_write = usage.get("cache_creation_input_tokens", 0)
+    out = usage.get("output_tokens", 0)
+    cost = getattr(message, "total_cost_usd", None)
+
+    prompt_total = fresh + cache_read + cache_write
+    hit = f"{cache_read / prompt_total * 100:.0f}%" if prompt_total else "n/a"
+    cost_str = f" cost=${cost:.4f}" if isinstance(cost, (int, float)) else ""
+    print(
+        f"[usage] user={user_id} cache_hit={hit} "
+        f"(read={cache_read} write={cache_write} fresh={fresh}) out={out}{cost_str}"
+    )
+
+
 async def _query(d: Path, user_id: str, text: str, session_id: str | None) -> tuple[str, str | None]:
     options = ClaudeAgentOptions(
         cwd=str(d),
@@ -81,6 +103,7 @@ async def _query(d: Path, user_id: str, text: str, session_id: str | None) -> tu
                         reply_parts.append(block.text)
             elif msg_type == "ResultMessage":
                 new_session_id = getattr(message, "session_id", new_session_id)
+                _log_usage(user_id, message)
                 if getattr(message, "is_error", False):
                     error = RuntimeError(getattr(message, "result", "unknown error"))
 
