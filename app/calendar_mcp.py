@@ -5,7 +5,7 @@ from claude_agent_sdk import create_sdk_mcp_server, tool
 from . import calendar_tools
 
 
-def build_server(user_dir: Path):
+def build_server(user_dir: Path, user_id: str | None = None):
     @tool(
         "list_events",
         "查詢指定時間範圍內的行事曆事件。calendar_id 用 'primary'（個人曆）或 'family'（家庭共用曆）。"
@@ -13,9 +13,12 @@ def build_server(user_dir: Path):
         {"calendar_id": str, "time_min": str, "time_max": str},
     )
     async def list_events(args):
-        events = calendar_tools.list_events(
-            user_dir, args["calendar_id"], args["time_min"], args["time_max"]
-        )
+        try:
+            events = calendar_tools.list_events(
+                user_dir, args["calendar_id"], args["time_min"], args["time_max"], user_id
+            )
+        except calendar_tools.ForbiddenCalendarError as e:
+            return {"content": [{"type": "text", "text": str(e)}], "isError": True}
         return {"content": [{"type": "text", "text": str(events)}]}
 
     @tool(

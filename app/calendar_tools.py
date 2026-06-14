@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 FAMILY_CALENDAR_ID = os.environ["FAMILY_CALENDAR_ID"]
 ICLOUD_CALENDAR_ID = os.environ.get("ICLOUD_CALENDAR_ID")
 YUNPEI_CALENDAR_ID = os.environ.get("YUNPEI_CALENDAR_ID")
+YUNPEI_ALLOWED_USER_ID = os.environ.get("YUNPEI_ALLOWED_USER_ID")
 
 
 class NotLinkedError(Exception):
@@ -46,22 +47,30 @@ def _service(user_dir: Path):
     return build("calendar", "v3", credentials=_credentials(user_dir), cache_discovery=False)
 
 
-def _resolve_calendar_id(calendar_id: str) -> str:
+class ForbiddenCalendarError(Exception):
+    pass
+
+
+def _resolve_calendar_id(calendar_id: str, user_id: str | None = None) -> str:
     if calendar_id in ("family", "家庭", "家庭曆"):
         return FAMILY_CALENDAR_ID
     if calendar_id in ("icloud", "apple", "iCloud") and ICLOUD_CALENDAR_ID:
         return ICLOUD_CALENDAR_ID
     if calendar_id in ("yunpei", "主要", "主要行事曆") and YUNPEI_CALENDAR_ID:
+        if YUNPEI_ALLOWED_USER_ID and user_id != YUNPEI_ALLOWED_USER_ID:
+            raise ForbiddenCalendarError("沒有權限存取這本日曆")
         return YUNPEI_CALENDAR_ID
     return "primary"
 
 
-def list_events(user_dir: Path, calendar_id: str, time_min: str, time_max: str) -> list[dict]:
+def list_events(
+    user_dir: Path, calendar_id: str, time_min: str, time_max: str, user_id: str | None = None
+) -> list[dict]:
     svc = _service(user_dir)
     resp = (
         svc.events()
         .list(
-            calendarId=_resolve_calendar_id(calendar_id),
+            calendarId=_resolve_calendar_id(calendar_id, user_id),
             timeMin=time_min,
             timeMax=time_max,
             singleEvents=True,

@@ -70,6 +70,9 @@ def _enqueue(user_id: str, reply_token: str, text: str) -> None:
     _queues[user_id].put_nowait((reply_token, text))
 
 
+FAMILY_GROUP_ID = os.environ.get("FAMILY_GROUP_ID")
+
+
 def _check_reminders() -> None:
     now = datetime.now(timezone.utc)
     for user_id in os.listdir(runner.DATA_DIR):
@@ -77,8 +80,10 @@ def _check_reminders() -> None:
         if not d.is_dir():
             continue
         for r in reminders.due_reminders(d, now):
+            target = r.get("target", "self")
+            to = FAMILY_GROUP_ID if target == "family" and FAMILY_GROUP_ID else user_id
             if reminders.try_record_push(d):
-                line_io.push_text(user_id, f"⏰ 提醒：{r['text']}")
+                line_io.push_text(to, f"⏰ 提醒：{r['text']}")
             else:
                 line_io.push_text(user_id, "⏰ 有提醒到期，但本月推播額度已用完。")
 
@@ -133,6 +138,8 @@ async def webhook(request: Request):
         if not isinstance(event, MessageEvent):
             continue
         if event.source.type != "user":
+            if event.source.type == "group":
+                print(f"[group] message from group_id={event.source.group_id}")
             continue
         user_id = event.source.user_id
         if not _is_allowed(user_id):

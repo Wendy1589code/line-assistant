@@ -31,11 +31,11 @@ def list_reminders(user_dir: Path) -> list[dict]:
     return _load(_reminders_file(user_dir), [])
 
 
-def add_reminder(user_dir: Path, remind_at: str, text: str) -> dict:
-    """remind_at: RFC3339 datetime string."""
+def add_reminder(user_dir: Path, remind_at: str, text: str, target: str = "self") -> dict:
+    """remind_at: RFC3339 datetime string. target: 'self' or 'family'."""
     reminders = list_reminders(user_dir)
     new_id = (max((r["id"] for r in reminders), default=0)) + 1
-    reminder = {"id": new_id, "remind_at": remind_at, "text": text, "fired": False}
+    reminder = {"id": new_id, "remind_at": remind_at, "text": text, "fired": False, "target": target}
     reminders.append(reminder)
     _save(_reminders_file(user_dir), reminders)
     return reminder

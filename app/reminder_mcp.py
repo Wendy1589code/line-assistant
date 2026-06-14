@@ -8,13 +8,16 @@ from . import reminders
 def build_server(user_dir: Path):
     @tool(
         "set_reminder",
-        "設定一個未來的提醒，到時間會主動發 LINE 訊息給使用者。"
-        " remind_at 用 RFC3339 格式，例如 2026-06-15T20:00:00+08:00。",
-        {"remind_at": str, "text": str},
+        "設定一個未來的提醒，到時間會主動發 LINE 訊息。"
+        " remind_at 用 RFC3339 格式，例如 2026-06-15T20:00:00+08:00。"
+        " target 預設 'self'（只提醒自己）；若使用者明確說「提醒全家/家人」，target 填 'family'（發到家庭群組）。",
+        {"remind_at": str, "text": str, "target": str},
     )
     async def set_reminder(args):
-        r = reminders.add_reminder(user_dir, args["remind_at"], args["text"])
-        return {"content": [{"type": "text", "text": f"已設定提醒 #{r['id']}：{r['remind_at']} - {r['text']}"}]}
+        target = args.get("target") or "self"
+        r = reminders.add_reminder(user_dir, args["remind_at"], args["text"], target)
+        who = "全家" if target == "family" else "你"
+        return {"content": [{"type": "text", "text": f"已設定提醒 #{r['id']}（{who}）：{r['remind_at']} - {r['text']}"}]}
 
     @tool(
         "list_reminders",

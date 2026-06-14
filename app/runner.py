@@ -54,7 +54,7 @@ def reset_session(user_id: str) -> None:
         f.unlink()
 
 
-async def _query(d: Path, text: str, session_id: str | None) -> tuple[str, str | None]:
+async def _query(d: Path, user_id: str, text: str, session_id: str | None) -> tuple[str, str | None]:
     options = ClaudeAgentOptions(
         cwd=str(d),
         model=os.environ.get("MODEL"),
@@ -62,7 +62,7 @@ async def _query(d: Path, text: str, session_id: str | None) -> tuple[str, str |
         resume=session_id,
         permission_mode="bypassPermissions",
         mcp_servers={
-            "calendar": calendar_mcp.build_server(d),
+            "calendar": calendar_mcp.build_server(d, user_id),
             "reminder": reminder_mcp.build_server(d),
         },
     )
@@ -96,12 +96,12 @@ async def run_turn(user_id: str, text: str) -> str:
     session_id = _load_session_id(d)
 
     try:
-        reply, new_session_id = await _query(d, text, session_id)
+        reply, new_session_id = await _query(d, user_id, text, session_id)
     except Exception:
         if session_id is None:
             raise
         # resume failed (e.g. transcript not found) -> retry with a fresh session
-        reply, new_session_id = await _query(d, text, None)
+        reply, new_session_id = await _query(d, user_id, text, None)
 
     if new_session_id:
         _save_session_id(d, new_session_id)
