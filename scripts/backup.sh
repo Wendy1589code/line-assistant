@@ -41,7 +41,8 @@ if [ "${#targets[@]}" -eq 0 ]; then
 fi
 
 note "backup start -> $archive (targets: ${targets[*]})"
-tar czf "$archive" "${targets[@]}"
+# climbing repo lives on GitHub and the Kilter DB (~200MB) can be re-synced -> skip both
+tar czf "$archive" --exclude=data/climb_repo --exclude=data/climb_home "${targets[@]}"
 
 # Verify the archive is readable before we trust it / rotate old ones.
 if ! tar tzf "$archive" >/dev/null 2>&1; then
